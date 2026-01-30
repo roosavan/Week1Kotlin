@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import com.example.viikkotehtava1.ui.HomeScreen
-import com.example.viikkotehtava1.ui.theme.Viikkotehtava1Theme
+import com.example.viikkotehtava1.view.HomeScreen
+import com.example.viikkotehtava1.view.theme.Viikkotehtava1Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

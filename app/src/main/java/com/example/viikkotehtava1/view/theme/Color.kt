@@ -1,4 +1,4 @@
-package com.example.viikkotehtava1.ui.theme
+package com.example.viikkotehtava1.view.theme
 
 import androidx.compose.ui.graphics.Color
 

@@ -1,4 +1,4 @@
-package com.example.viikkotehtava1.ui
+package com.example.viikkotehtava1.view
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,13 +11,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.viikkotehtava1.viewmodel.TaskViewModel
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import com.example.viikkotehtava1.model.Task
 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     val vm = viewModel<TaskViewModel>()
-    val tasks = vm.tasks.value
+    val tasks by vm.tasks.collectAsState()
 
     var newTitle by remember { mutableStateOf("") }
+    var selectedTask by remember { mutableStateOf<Task?>(null) }
 
     Column(modifier = modifier.padding(16.dp)) {
 
@@ -86,7 +88,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             items(tasks, key = { it.id }) { task ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    onClick = { selectedTask = task }
                 ) {
                     Row(
                         modifier = Modifier
@@ -109,5 +112,20 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+
+    selectedTask?.let { task ->
+        DetailDialog(
+            task = task,
+            onDismiss = { selectedTask = null },
+            onUpdate = { title, description ->
+                vm.updateTask(task.id, title, description)
+                selectedTask = null
+            },
+            onDelete = {
+                vm.removeTask(task.id)
+                selectedTask = null
+            }
+        )
     }
 }
