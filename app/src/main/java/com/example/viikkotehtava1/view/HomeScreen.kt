@@ -3,110 +3,116 @@ package com.example.viikkotehtava1.view
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.viikkotehtava1.viewmodel.TaskViewModel
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import com.example.viikkotehtava1.model.Task
+import com.example.viikkotehtava1.viewmodel.TaskViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
-    val vm = viewModel<TaskViewModel>()
-    val tasks by vm.tasks.collectAsState()
+fun HomeScreen(
+    viewModel: TaskViewModel,
+    onNavigateToCalendar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tasks by viewModel.tasks.collectAsState()
 
-    var newTitle by remember { mutableStateOf("") }
+    var showAddDialog by remember { mutableStateOf(false) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
 
-    Column(modifier = modifier.padding(16.dp)) {
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp),
-                value = newTitle,
-                onValueChange = { newTitle = it },
-                label = { Text("New task") },
-                singleLine = true
-            )
-
-            Button(
-                modifier = Modifier.height(56.dp),
-                onClick = {
-                    vm.addTask(newTitle)
-                    newTitle = ""
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Task List") },
+                actions = {
+                    IconButton(onClick = onNavigateToCalendar) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Calendar view"
+                        )
+                    }
                 }
-            ) {
-                Text("Add")
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add task")
             }
         }
+    ) { padding ->
+        Column(modifier = modifier.padding(padding).padding(16.dp)) {
 
-        Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.showAll() }
+                ) { Text("Show all") }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                modifier = Modifier.weight(1f),
-                onClick = { vm.showAll() }
-            ) { Text("Show all") }
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.filterByDone(true) }
+                ) { Text("Show done") }
+            }
 
-            Button(
-                modifier = Modifier.weight(1f),
-                onClick = { vm.filterByDone(true) }
-            ) { Text("Show done") }
-        }
+            Spacer(Modifier.height(8.dp))
 
-        Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.filterByDone(false) }
+                ) { Text("Show not done") }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                modifier = Modifier.weight(1f),
-                onClick = { vm.filterByDone(false) }
-            ) { Text("Show not done") }
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.sortByDueDate() }
+                ) { Text("Sort by due") }
+            }
 
-            Button(
-                modifier = Modifier.weight(1f),
-                onClick = { vm.sortByDueDate() }
-            ) { Text("Sort by due") }
-        }
+            Spacer(Modifier.height(12.dp))
 
-        Spacer(Modifier.height(12.dp))
-
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(tasks, key = { it.id }) { task ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    onClick = { selectedTask = task }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(tasks, key = { it.id }) { task ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        onClick = { selectedTask = task }
                     ) {
-                        Checkbox(
-                            checked = task.done,
-                            onCheckedChange = { vm.toggleDone(task.id) }
-                        )
-                        Text(
-                            modifier = Modifier.weight(1f),
-                            text = task.title
-                        )
-                        TextButton(onClick = { vm.removeTask(task.id) }) {
-                            Text("Delete")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Checkbox(
+                                checked = task.done,
+                                onCheckedChange = { viewModel.toggleDone(task.id) }
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = task.title,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                if (task.description.isNotEmpty()) {
+                                    Text(
+                                        text = task.description,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -114,16 +120,35 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    if (showAddDialog) {
+        AddTaskDialog(
+            onDismiss = { showAddDialog = false },
+            onAdd = { title, description, dueDate, priority ->
+                viewModel.addTask(
+                    Task(
+                        id = 0,
+                        title = title,
+                        description = description,
+                        priority = priority,
+                        dueDate = dueDate,
+                        done = false
+                    )
+                )
+                showAddDialog = false
+            }
+        )
+    }
+
     selectedTask?.let { task ->
         DetailDialog(
             task = task,
             onDismiss = { selectedTask = null },
             onUpdate = { title, description ->
-                vm.updateTask(task.id, title, description)
+                viewModel.updateTask(task.id, title, description)
                 selectedTask = null
             },
             onDelete = {
-                vm.removeTask(task.id)
+                viewModel.removeTask(task.id)
                 selectedTask = null
             }
         )
