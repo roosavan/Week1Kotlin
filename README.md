@@ -1,96 +1,62 @@
-# Viikkotehtävä 4 Kotlin (week4)
+# Viikkotehtävä 6 Kotlin (week6)
 
-## Navigointi Jetpack Composessa
-- Navigointi mahdollistaa siirtymisen eri näkymien (screenien) välillä sovelluksessa. Jetpack Compose käyttää Navigation Compose -kirjastoa, joka integroi navigaation deklaratiiviseen UI-malliin.
+## Room Database
 
-### NavController
-- Hallitsee navigaatiota sovelluksessa
-- Muistaa navigaatiohistorian
-- Tarjoaa metodit: `navigate()`, `popBackStack()`, `navigateUp()`
+Room on Android Jetpack -kirjasto, joka tarjoaa abstraktiokerroksen SQLite-tietokannan päälle. Se mahdollistaa datan pysyvän tallentamisen sovellukseen.
 
-### NavHost
-- Määrittelee navigaatiorakenteen
-- Sisältää kaikki reitit ja niitä vastaavat Composablet
-- Yhdistää reitin tiettyyn ruutuun
+### Room-arkkitehtuuri
 
-### Sovelluksen navigaatiorakenne
-- **HomeScreen → CalendarScreen**: `navController.navigate(ROUTE_CALENDAR)`
-- **CalendarScreen → HomeScreen**: `navController.popBackStack()`
-- TopAppBar sisältää kalenterikonin (HomeScreen) ja takaisin-nuolen (CalendarScreen)
+UI (Compose) ↕ ViewModel (StateFlow) ↕ Repository (suspend functions) ↕ DAO (Data Access Object) ↕ RoomDatabase ↕ SQLite
 
-## MVVM + Navigointi
+### Komponentit
 
-### Yksi ViewModel kahdelle screenille
+#### 1. Entity (TaskEntity.kt)
+- Edustaa tietokantataulua
+- `@Entity` annotaatio määrittää luokan tauluksi
+- `@PrimaryKey` määrittää pääavaimen
+- Sisältää kaikki taulun sarakkeet (id, title, description, priority, dueDate, done)
 
-- ViewModel luodaan NavHostin tasolla MainActivity:ssä ja välitetään parametrina molemmille ruuduille
-- Sama tila jaetaan molempien ruutujen välillä
-- Muutokset näkyvät heti kummassakin näkymässä
-- Ei tarvetta tilan synkronointiin
+#### 2. DAO - Data Access Object (TaskDao.kt)
+- Määrittelee tietokantaoperaatiot (CRUD)
+- `@Query`, `@Insert`, `@Update`, `@Delete` annotaatiot
+- Palauttaa `Flow<List<TaskEntity>>` reaktiiviseen datanhakuun
+- Suspend-funktiot asynkronisiin operaatioihin
 
-### Jaettu StateFlow-tila
+#### 3. Database (AppDatabase.kt)
+- `@Database` annotaatio määrittää tietokannan
+- Singleton-pattern varmistaa yhden instanssin
+- Tarjoaa pääsyn DAO:ihin
+- Versiointi tietokannan päivityksiä varten
 
-Molemmat ruudut kuuntelevat samaa StateFlowta: `val tasks by viewModel.tasks.collectAsState()`
+#### 4. Repository (TaskRepository.kt)
+- Välittää datan DAO:sta ViewModelille
+- Kapseloi tietolähteen (voi olla useita lähteitä)
+- Tarjoaa puhtaan API:n ViewModelille
+- Suspend-funktiot tietokantaoperaatioille
 
-**Kun käyttäjä muokkaa tehtävää:**
-1. UI kutsuu ViewModelin funktiota (esim. `toggleDone()`)
-2. ViewModel päivittää `_tasks.value`
-3. StateFlow emittoi uuden arvon
-4. Molemmat ruudut saavat päivityksen automaattisesti
-5. UI rekomponoituu molemmissa näkymissä
+#### 5. ViewModel (TaskViewModel.kt)
+- Kerää Flow-datan `collectAsState()` avulla
+- Hallitsee UI:n tilaa `StateFlow`:lla
+- Kutsuu Repository-funktioita `viewModelScope.launch` sisällä
+- Eristää UI:n suorista tietokantakutsuista
 
-## CalendarScreen
+#### 6. UI (Compose)
+- Kuuntelee ViewModel:n StateFlow:ta
+- Näyttää datan käyttäjälle
+- Lähettää käyttäjän toimet ViewModelille
+- Automaattinen rekomponointi datan muuttuessa
 
-**Toteutus:**
-- Tehtävät ryhmitellään `dueDate`-kentän mukaan: `tasks.groupBy { it.dueDate }.toSortedMap()`
-- Näytetään päivämäärä otsikkona ja sen alla kyseisen päivän tehtävät
+## Datavirta
 
-**Ominaisuudet:**
-- Sama `toggleDone()` toiminnallisuus kuin HomeScreenissä
-- Tehtävän klikkaus avaa `DetailDialog`:n muokkausta varten
-- Kaikki muutokset synkronoituvat automaattisesti HomeScreenin kanssa
+### Lukeminen (Database → UI)
 
-## AlertDialog: Add & Edit
+1. RoomDatabase emittoi muutokset
+2. DAO:n Flow päivittyy automaattisesti
+3. Repository välittää Flow:n ViewModelille
+4. ViewModel kerää Flow:n StateFlow:ksi
+5. UI kerää StateFlow:n collectAsState():lla
+6. Compose rekomponoituu automaattisesti
 
-### AddTask
-- Toteutettu HomeScreenissä yksinkertaisella TextField + Button -yhdistelmällä
-- Käyttäjä kirjoittaa otsikon ja painaa "Add"
-- Kutsuu `viewModel.addTask(title)`
+#### Youtube demo
 
-### EditTask (DetailDialog)
-- Avataan kun käyttäjä klikkaa tehtävää (HomeScreen tai CalendarScreen)
-- Paikallinen tila: `var selectedTask by remember { mutableStateOf<Task?>(null) }`
-
-**DetailDialog sisältää:**
-- Esitäytetyt tekstikentät (title, description)
-- **"Save"** → `viewModel.updateTask(task.id, title, description)`
-- **"Delete"** → `viewModel.removeTask(task.id)` + vahvistus
-- **"Cancel"** → sulje dialogi ilman muutoksia
-
-## Kerrosrakenne
-
-### Model (model-paketti)
-- **Task.kt** – datamalli (id, title, description, priority, dueDate, done)
-- **MockTasks** – testausdata
-
-### ViewModel (viewmodel-paketti)
-- **TaskViewModel.kt** – tilan hallinta StateFlow:lla
-- Toiminnot: `addTask()`, `toggleDone()`, `updateTask()`, `removeTask()`, `filterByDone()`, `sortByDueDate()`, `showAll()`
-
-### View (view-paketti)
-- **HomeScreen.kt** – tehtävälista
-- **CalendarScreen.kt** – kalenterinäkymä
-- **DetailDialog.kt** – muokkaus ja poisto
-- **AddTaskDialog.kt** - Uuden tehtävän lisääminen
-- UI kuuntelee ViewModelin tilaa `collectAsState()`:lla
-- Päivitykset näkyvät automaattisesti
-
-### Navigation (navigation-paketti)
-- **Routes.kt** – reitit (`ROUTE_HOME`, `ROUTE_CALENDAR`)
-
-### MainActivity
-- Luo NavController ja ViewModel
-- Määrittelee NavHost:n navigaatiorakenteen
-
-## Demovideo
-
-**Viikko4 video: https://youtu.be/hlWMvchsL2I**
+https://youtu.be/agZLckHRikc
