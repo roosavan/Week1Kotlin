@@ -5,11 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.viikkotehtava1.model.Task
+import com.example.viikkotehtava1.model.TaskEntity
 
 @Composable
 fun DetailDialog(
-    task: Task,
+    task: TaskEntity,
     onDismiss: () -> Unit,
     onUpdate: (String, String) -> Unit,
     onDelete: () -> Unit

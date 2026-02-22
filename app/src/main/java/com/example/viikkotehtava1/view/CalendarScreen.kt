@@ -9,7 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.viikkotehtava1.model.Task
+import com.example.viikkotehtava1.model.TaskEntity
 import com.example.viikkotehtava1.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -19,7 +19,7 @@ fun CalendarScreen(
     onNavigateBack: () -> Unit
 ) {
     val tasks by viewModel.tasks.collectAsState()
-    var selectedTask by remember { mutableStateOf<Task?>(null) }
+    var selectedTask by remember { mutableStateOf<TaskEntity?>(null) }
 
     val tasksByDate = tasks.groupBy { it.dueDate }.toSortedMap()
 
