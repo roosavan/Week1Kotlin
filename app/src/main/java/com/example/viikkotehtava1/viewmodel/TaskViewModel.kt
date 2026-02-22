@@ -1,84 +1,108 @@
 package com.example.viikkotehtava1.viewmodel
 
-import androidx.lifecycle.ViewModel
-import com.example.viikkotehtava1.model.MockTasks
-import com.example.viikkotehtava1.model.Task
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.viikkotehtava1.local.AppDatabase
+import com.example.viikkotehtava1.model.TaskEntity
+import com.example.viikkotehtava1.repository.TaskRepository
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
-class TaskViewModel : ViewModel() {
+class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _allTasks = MutableStateFlow<List<Task>>(emptyList())
+    private val repository: TaskRepository
 
-    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
+    private val _allTasks: Flow<List<TaskEntity>>
 
-    val tasks: StateFlow<List<Task>> = _tasks.asStateFlow()
+    private val _tasks = MutableStateFlow<List<TaskEntity>>(emptyList())
+    val tasks: StateFlow<List<TaskEntity>> = _tasks.asStateFlow()
+
+    private var currentFilter: FilterType = FilterType.ALL
 
     init {
-        _allTasks.value = MockTasks
-        _tasks.value = MockTasks
+        val taskDao = AppDatabase.getDatabase(application).taskDao()
+        repository = TaskRepository(taskDao)
+        _allTasks = repository.allTasks
+
+        viewModelScope.launch {
+            _allTasks.collect { taskList ->
+                applyFilter(currentFilter, taskList)
+            }
+        }
     }
 
-    fun addTask(task: Task) {
-        _allTasks.value = _allTasks.value + task
-        _tasks.value = _allTasks.value
-    }
-
-    fun addTask(title: String) {
-        val trimmed = title.trim()
-        if (trimmed.isEmpty()) return
-
-        val nextId = (_allTasks.value.maxOfOrNull { it.id } ?: 0) + 1
-        addTask(
-            Task(
-                id = nextId,
-                title = trimmed,
-                description = "",
-                priority = 1,
-                dueDate = "2026-01-22",
-                done = false
-            )
-        )
+    fun addTask(task: TaskEntity) {
+        viewModelScope.launch {
+            repository.insert(task)
+        }
     }
 
     fun toggleDone(taskId: Int) {
-        _allTasks.value = _allTasks.value.map { task ->
-            if (task.id == taskId) {
-                task.copy(done = !task.done)
-            } else {
-                task
+        viewModelScope.launch {
+            val currentTasks = _tasks.value
+            val task = currentTasks.find { it.id == taskId }
+            task?.let {
+                repository.update(it.copy(done = !it.done))
             }
         }
-        _tasks.value = _allTasks.value
     }
 
     fun updateTask(taskId: Int, title: String, description: String) {
-        _allTasks.value = _allTasks.value.map { task ->
-            if (task.id == taskId) {
-                task.copy(title = title, description = description)
-            } else {
-                task
+        viewModelScope.launch {
+            val currentTasks = _tasks.value
+            val task = currentTasks.find { it.id == taskId }
+            task?.let {
+                repository.update(
+                    it.copy(
+                        title = title,
+                        description = description
+                    )
+                )
             }
         }
-        _tasks.value = _allTasks.value
     }
 
     fun removeTask(taskId: Int) {
-        _allTasks.value = _allTasks.value.filter { it.id != taskId }
-        _tasks.value = _allTasks.value
+        viewModelScope.launch {
+            repository.deleteById(taskId)
+        }
     }
 
     fun filterByDone(done: Boolean) {
-        _tasks.value = _allTasks.value.filter { it.done == done }
+        currentFilter = if (done) FilterType.DONE else FilterType.NOT_DONE
+        viewModelScope.launch {
+            _allTasks.collect { taskList ->
+                applyFilter(currentFilter, taskList)
+            }
+        }
     }
 
     fun sortByDueDate() {
-        _allTasks.value = _allTasks.value.sortedBy { it.dueDate }
-        _tasks.value = _tasks.value.sortedBy { it.dueDate }
+        viewModelScope.launch {
+            val sorted = _tasks.value.sortedBy { it.dueDate }
+            _tasks.value = sorted
+        }
     }
 
     fun showAll() {
-        _tasks.value = _allTasks.value
+        currentFilter = FilterType.ALL
+        viewModelScope.launch {
+            _allTasks.collect { taskList ->
+                applyFilter(FilterType.ALL, taskList)
+            }
+        }
+    }
+
+    private fun applyFilter(filter: FilterType, taskList: List<TaskEntity>) {
+        _tasks.value = when (filter) {
+            FilterType.ALL -> taskList
+            FilterType.DONE -> taskList.filter { it.done }
+            FilterType.NOT_DONE -> taskList.filter { !it.done }
+        }
+    }
+
+    private enum class FilterType {
+        ALL, DONE, NOT_DONE
     }
 }

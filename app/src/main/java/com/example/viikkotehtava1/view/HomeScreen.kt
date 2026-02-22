@@ -10,7 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.viikkotehtava1.model.Task
+import com.example.viikkotehtava1.model.TaskEntity
 import com.example.viikkotehtava1.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,7 +23,7 @@ fun HomeScreen(
     val tasks by viewModel.tasks.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
-    var selectedTask by remember { mutableStateOf<Task?>(null) }
+    var selectedTask by remember { mutableStateOf<TaskEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -125,8 +125,7 @@ fun HomeScreen(
             onDismiss = { showAddDialog = false },
             onAdd = { title, description, dueDate, priority ->
                 viewModel.addTask(
-                    Task(
-                        id = 0,
+                    TaskEntity(
                         title = title,
                         description = description,
                         priority = priority,
